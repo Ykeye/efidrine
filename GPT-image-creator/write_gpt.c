@@ -74,8 +74,8 @@ uint64_t esp_lbas, data_lbas, image_size_lbas;
 //Pad the 0s to fill the lba to size
 //========================
 void write_full_lba_size(FILE *image) {
-    zero_sector[512];
-    for (uint8-t i=0; i < (lba_size - sizeof zero_sector) / sizeof zero_sector; i++)
+    uint8_t zero_sector[512];
+    for (uint8_t i=0; i < (lba_size - sizeof zero_sector) / sizeof zero_sector; i++)
       fwrite(zero_sector, sizeof zero_sector, 1, image);
 }
 
@@ -119,8 +119,10 @@ bool write_mbr(FILE *image) {
   return true;
 }
 
-
-bool write_gpt(FILE *image) {
+// =======================================
+// Write GPT headers and tables
+// =======================================
+bool write_gpts(FILE *image) {
 
   Gpt gpt = {
   .signature = 0x5452415020494645,  //EFI PART (ASCII little endian) as of 5.3.2. in UEFI spec.
@@ -157,13 +159,18 @@ int main(void) {
   }
 
   // Set sizes
-
   image_size = esp_size + data_size + (1024*1024)/* 1Mb extra padding for GPT/MBR */;
   image_size_lbas = bytes_to_lbas(image_size);
 
+  // Wirte protective MBR 
   if (!write_mbr(image)) {
-    fprintf(stderr, "Error writing protective MBR for fike: %s\n", image_name);
+    fprintf(stderr, "Error writing protective MBR for file: %s\n", image_name);
+    return EXIT_FAILURE;
   }
-
+  //Write GPT headers and tables
+  if (!write_gpts(image)) {
+    fprintf(stderr, "Error writing GPT headers and tables for file: %s\n", image_name);
+    return EXIT_FAILURE;
+  } 
   return EXIT_SUCCESS;
 }
